@@ -1,26 +1,21 @@
 import pygame as pg
 import random
 
-
-# cores do jogo
+# --- CORES DO JOGO ---
 rosa = (255, 218, 185)
 preto = (0, 0, 0)
 
-# setup da tela do jogo
+# --- SETUP ---
+pg.init()
 window = pg.display.set_mode((1000, 600))
 
-# iniciando fonte do jogo
+# fontes
 pg.font.init()
-# fonte e tamanho
 font = pg.font.SysFont("courier New", 50)
 font_rb = pg.font.SysFont("courier New", 30)
 
-
-palavras = [
-    "CAVALO",
-    "COELHO",
-    "SAPO",
-]
+# --- VARIÁVEIS ---
+palavras = ["CAVALO", "COELHO", "SAPO"]
 tentativas_de_letras = ["", "-"]
 palavra_escolhida = ""
 palavra_camuflada = ""
@@ -30,6 +25,17 @@ letra = ""
 click_last_status = False
 
 
+# --- SISTEMA DE SOM ---
+def som_do_jogo():
+    pg.mixer.init()
+    try:
+        pg.mixer.music.load("som.mp3")
+        pg.mixer.music.play(-1)  # loop infinito
+    except:
+        print("⚠️ Arquivo de som não encontrado.")
+
+
+# --- DESENHOS DO JOGO ---
 def desenho_da_forca(window, chance):
     pg.draw.rect(window, rosa, (0, 0, 1000, 600))
     pg.draw.line(window, preto, (100, 500), (100, 100), 10)
@@ -56,92 +62,73 @@ def desenho_proximo_button(window):
     window.blit(texto, (740, 120))
 
 
+# --- LÓGICA DO JOGO ---
 def sorteando_palavra(palavras, palavra_escolhida, end_game):
-    if end_game == True:
-        palavra_n = random.randint(0, len(palavras) - 1)
-        palavra_escolhida = palavras[palavra_n]
+    if end_game:
+        palavra_escolhida = random.choice(palavras)
         end_game = False
     return palavra_escolhida, end_game
 
 
-def camuflar_palavra(palavra_escolhida, palavra_camuflada, tentativas_de_letras):
-    palavra_camuflada = palavra_escolhida
-    for n in range(len(palavra_camuflada)):
-        if palavra_camuflada[n : n + 1] not in tentativas_de_letras:
-            palavra_camuflada = palavra_camuflada.replace(palavra_camuflada[n], "#")
+def camuflar_palavra(palavra_escolhida, palavra_camuflada, tentativas):
+    palavra_camuflada = ""
+    for letra in palavra_escolhida:
+        if letra in tentativas:
+            palavra_camuflada += letra
+        else:
+            palavra_camuflada += "#"
     return palavra_camuflada
 
 
-def tentando_uma_letra(tentativas_de_letras, palavra_escolhida, letra, chance):
-    if letra not in tentativas_de_letras:
-        tentativas_de_letras.append(letra)
+def tentando_uma_letra(tentativas, palavra_escolhida, letra, chance):
+    if letra not in tentativas:
+        tentativas.append(letra)
         if letra not in palavra_escolhida:
             chance += 1
-    elif letra in tentativas_de_letras:
-        pass
-    return tentativas_de_letras, chance
+    return tentativas, chance
 
 
 def palavra_do_jogo(window, palavra_camuflada):
-    palavra = font.render(palavra_camuflada, True, preto)
-    window.blit(palavra, (200, 500))
+    texto = font.render(palavra_camuflada, True, preto)
+    window.blit(texto, (200, 500))
 
 
-def proximo_do_jogo(
-    palavra_camuflada,
-    end_game,
-    chance,
-    letra,
-    tentativas_de_letras,
-    click_last_status,
-    click,
-    x,
-    y,
-):
-    count = 0
-    limit = len(palavra_camuflada)
-    for n in range(len(palavra_camuflada)):
-        if palavra_camuflada[n] != "#":
-            count += 1
-    if count == limit and click_last_status == False and click[0] == True:
-        if x >= 700 and x <= 900 and y <= 165:
-            tentativas_de_letras = [" ", "-"]
-            end_game = True
-            chance = 0
-            letra = " "
-    return end_game, chance, tentativas_de_letras, letra
+def proximo_do_jogo(palavra_camuflada, end_game, chance, letra, tentativas, click_last_status, click, x, y):
+    if "#" not in palavra_camuflada:  # venceu
+        if click_last_status == False and click[0] == True:
+            if 700 <= x <= 900 and y <= 165:
+                tentativas = ["", "-"]
+                end_game = True
+                chance = 0
+                letra = ""
+    return end_game, chance, tentativas, letra
 
 
+# --- INICIAR MÚSICA ---
+som_do_jogo()
+
+# --- LOOP PRINCIPAL ---
 while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
             quit()
         if event.type == pg.KEYDOWN:
-            letra = str(pg.key.name(event.key)).upper()
-            print(letra)
+            letra = pg.key.name(event.key).upper()
 
-    # declarando variavel de posiçao do mouse
-    mouse = pg.mouse.get_pos()
-    mouse_position_x = mouse[0]
-    mouse_position_y = mouse[1]
-
-    # declarando variavel click do mouse
+    # mouse
+    mouse_x, mouse_y = pg.mouse.get_pos()
     click = pg.mouse.get_pressed()
 
-    # jogo
+    # lógica do jogo
     desenho_da_forca(window, chance)
     desenho_proximo_button(window)
-    palavra_escolhida, end_game = sorteando_palavra(
-        palavras, palavra_escolhida, end_game
-    )
-    palavra_camuflada = camuflar_palavra(
-        palavra_escolhida, palavra_camuflada, tentativas_de_letras
-    )
-    tentativas_de_letras, chance = tentando_uma_letra(
-        tentativas_de_letras, palavra_escolhida, letra, chance
-    )
+
+    palavra_escolhida, end_game = sorteando_palavra(palavras, palavra_escolhida, end_game)
+    palavra_camuflada = camuflar_palavra(palavra_escolhida, palavra_camuflada, tentativas_de_letras)
+    tentativas_de_letras, chance = tentando_uma_letra(tentativas_de_letras, palavra_escolhida, letra, chance)
     palavra_do_jogo(window, palavra_camuflada)
+
     end_game, chance, tentativas_de_letras, letra = proximo_do_jogo(
         palavra_camuflada,
         end_game,
@@ -150,14 +137,11 @@ while True:
         tentativas_de_letras,
         click_last_status,
         click,
-        mouse_position_x,
-        mouse_position_y,
+        mouse_x,
+        mouse_y,
     )
-    som_do_jogo(palavra_escolhida, chance)
-    # click last status
-    if click[0] == True:
-        click_last_status = True
-    else:
-        click_last_status = False
+
+    # click status
+    click_last_status = click[0]
 
     pg.display.update()
